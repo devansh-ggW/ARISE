@@ -272,7 +272,6 @@
   // Scroll work is one rAF and only touches the two stages that actually use it.
   const meter = document.querySelector("[data-journey-meter]");
   const heroStage = document.querySelector('[data-scroll-stage="hero"]');
-  const purchaseStage = document.querySelector('[data-scroll-stage="purchase"]');
   let scrollFrame = 0;
   const updateScrollEffects = () => {
     scrollFrame = 0;
@@ -287,13 +286,6 @@
       heroStage.style.setProperty("--hero-depth-y", (-progress * 18).toFixed(1) + "px");
       heroStage.style.setProperty("--hero-depth-scale", (1 - progress * 0.018).toFixed(4));
     }
-    if (purchaseStage) {
-      const rect = purchaseStage.getBoundingClientRect();
-      const progress = clamp((viewport - rect.top) / (viewport + Math.max(rect.height, 1)), 0, 1);
-      purchaseStage.style.setProperty("--purchase-depth-y", ((1 - progress) * 22).toFixed(1) + "px");
-      purchaseStage.style.setProperty("--purchase-depth-scale", (0.91 + progress * 0.09).toFixed(4));
-      purchaseStage.style.setProperty("--purchase-light-level", (0.35 + progress * 0.45).toFixed(2));
-    }
   };
   const queueScrollEffects = () => {
     if (!scrollFrame) scrollFrame = requestAnimationFrame(updateScrollEffects);
@@ -302,9 +294,9 @@
   window.addEventListener("resize", queueScrollEffects, { passive: true });
   queueScrollEffects();
 
-  // Purchase-stage highlight is pointer/focus driven, never a permanent loop.
+  // Download CTA feedback is pointer/focus driven, never a permanent loop.
   document.querySelectorAll("[data-purchase-cta]").forEach((cta) => {
-    const stage = cta.closest(".purchase");
+    const stage = cta.closest(".book-section, .hero");
     if (!stage) return;
     const on = () => stage.setAttribute("data-cta-nearby", "true");
     const off = () => stage.removeAttribute("data-cta-nearby");
