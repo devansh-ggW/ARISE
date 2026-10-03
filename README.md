@@ -1,11 +1,15 @@
 # THE ARISE ARC website
 
-A dependency-free, responsive one-page editorial website for THE ARISE ARC. The supplied official cover is preserved as the same 1024×1536 artwork in a high-fidelity local WebP (`cover.webp`, approximately 208 KB) so the public preview URL can serve it directly.
+A dependency-free, responsive editorial site for THE ARISE ARC. The complete ebook is currently available as a free download at `./The_Arise_Arc_Ebook.pdf`.
 
-## Set the purchase destination
+## Free ebook
 
-Edit the single `purchaseUrl` value in [`site-config.js`](./site-config.js) and paste the real `https://` checkout URL. Once set, both purchase links open that URL in a separate tab. Leave it blank until a real checkout exists; the calls to action then open an email to `dewifystores@gmail.com` so the purchase path remains usable without pretending a checkout is configured.
+The homepage links directly to the local PDF with a same-origin download action. The supplied cover remains the visual source of truth.
+
+## Future checkout
+
+When a real HTTPS checkout exists, set `purchaseUrl` in [`site-config.js`](./site-config.js). The same main CTA can then switch from the free PDF to the configured checkout without rebuilding the page.
 
 ## Run locally
 
-From this directory, run `python3 -m http.server 3000 --bind 0.0.0.0`. The app has no build step or external library/font requests. The Webdev Preview uses the same port.
+From this directory, run `python3 -m http.server 3000 --bind 0.0.0.0`. The app has no build step or external library/font requests.
