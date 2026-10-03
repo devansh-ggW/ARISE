@@ -6,42 +6,38 @@
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  const ebookUrl = "./The_Arise_Arc_Ebook.pdf";
   const supportEmail = "dewifystores@gmail.com";
   const config = window.ARISE_ARC_CONFIG || {};
-  const purchaseUrl = typeof config.purchaseUrl === "string" ? config.purchaseUrl.trim() : "";
-
-  const isHttpsUrl = (value) => {
-    if (!/^https:\/\/\S+$/i.test(value)) return false;
+  const futurePurchaseUrl = typeof config.purchaseUrl === "string" ? config.purchaseUrl.trim() : "";
+  const isSafeHttps = (value) => {
     try {
-      const parsed = new URL(value);
-      return parsed.protocol === "https:" && Boolean(parsed.hostname) && !parsed.username && !parsed.password;
+      const url = new URL(value);
+      return url.protocol === "https:" && !!url.hostname && !url.username && !url.password;
     } catch {
       return false;
     }
   };
 
-  const hasPurchaseUrl = Boolean(purchaseUrl && isHttpsUrl(purchaseUrl));
-  const purchaseFallback = `mailto:${supportEmail}?subject=${encodeURIComponent("I'd like to purchase THE ARISE ARC")}`;
+  // Free for now. A future HTTPS checkout can take over this same CTA.
+  const ctaUrl = futurePurchaseUrl && isSafeHttps(futurePurchaseUrl) ? futurePurchaseUrl : ebookUrl;
+  const usingCheckout = ctaUrl !== ebookUrl;
 
   document.querySelectorAll("[data-purchase-cta]").forEach((link) => {
-    const label = link.querySelector("[data-purchase-label]");
-    if (hasPurchaseUrl) {
-      link.href = purchaseUrl;
+    link.href = ctaUrl;
+    if (usingCheckout) {
       link.target = "_blank";
       link.rel = "noopener noreferrer";
-      if (label) label.textContent = "Get the ebook";
+      link.removeAttribute("download");
       link.setAttribute("aria-label", "Get THE ARISE ARC ebook; opens the purchase page in a new tab");
     } else {
-      link.href = purchaseFallback;
+      link.setAttribute("download", "");
       link.removeAttribute("target");
       link.removeAttribute("rel");
-      if (label) label.textContent = link.dataset.defaultLabel || "Ask about the ebook";
-      link.setAttribute("aria-label", "Email dewifystores@gmail.com to ask about purchasing THE ARISE ARC");
+      link.setAttribute("aria-label", "Download the free THE ARISE ARC ebook");
     }
-  });
-
-  document.querySelectorAll("[data-purchase-note]").forEach((note) => {
-    if (hasPurchaseUrl) note.hidden = true;
+    const label = link.querySelector("[data-purchase-label]");
+    if (label) label.textContent = usingCheckout ? "Get the ebook" : "Download the free ebook";
   });
 
   const menuButton = document.querySelector(".menu-toggle");
@@ -61,7 +57,8 @@
     if (event.key === "Escape") setMenu(false);
   });
   document.addEventListener("click", (event) => {
-    if (document.body.classList.contains("nav-open") && nav && menuButton && !nav.contains(event.target) && !menuButton.contains(event.target)) {
+    if (document.body.classList.contains("nav-open") && nav && menuButton &&
+        !nav.contains(event.target) && !menuButton.contains(event.target)) {
       setMenu(false);
     }
   });
@@ -69,114 +66,73 @@
     if (event.matches) setMenu(false);
   });
 
-  const coverHint = document.querySelector("[data-cover-hint]");
-  const touchLayout = !finePointer || window.innerWidth <= 620 || navigator.maxTouchPoints > 0;
-  if (coverHint && touchLayout) coverHint.textContent = coverHint.dataset.touchCopy || "Swipe lightly to turn the cover.";
-
+  // Covers: one lightweight rAF per actively used cover.
   document.querySelectorAll("[data-cover-control]").forEach((control) => {
     const book = control.querySelector("[data-cover-tilt]");
     if (!book) return;
 
     if (finePointer && !reduceMotion) {
       let frame = 0;
-      let pointer = null;
-      const renderTilt = () => {
+      let point = null;
+      const render = () => {
         frame = 0;
-        if (!pointer) return;
+        if (!point) return;
         const rect = control.getBoundingClientRect();
-        const x = clamp((pointer.x - rect.left) / rect.width, 0, 1) - 0.5;
-        const y = clamp((pointer.y - rect.top) / rect.height, 0, 1) - 0.5;
-        book.style.setProperty("--tilt-x", `${(-y * 7).toFixed(2)}deg`);
-        book.style.setProperty("--tilt-y", `${(x * 10).toFixed(2)}deg`);
-        book.style.setProperty("--shadow-x", `${(21 + x * 8).toFixed(1)}px`);
-        book.style.setProperty("--shadow-y", `${(30 + y * 10).toFixed(1)}px`);
-        book.style.setProperty("--sheen-x", `${((x + 0.5) * 100).toFixed(1)}%`);
-        book.style.setProperty("--sheen-y", `${((y + 0.5) * 100).toFixed(1)}%`);
-        book.style.setProperty("--sheen-opacity", "0.34");
+        const x = clamp((point.x - rect.left) / rect.width, 0, 1) - 0.5;
+        const y = clamp((point.y - rect.top) / rect.height, 0, 1) - 0.5;
+        book.style.setProperty("--tilt-x", (-y * 7).toFixed(2) + "deg");
+        book.style.setProperty("--tilt-y", (x * 10).toFixed(2) + "deg");
+        book.style.setProperty("--shadow-x", (20 + x * 7).toFixed(1) + "px");
+        book.style.setProperty("--shadow-y", (27 + y * 8).toFixed(1) + "px");
+        book.style.setProperty("--sheen-x", ((x + 0.5) * 100).toFixed(1) + "%");
+        book.style.setProperty("--sheen-y", ((y + 0.5) * 100).toFixed(1) + "%");
+        book.style.setProperty("--sheen-opacity", "0.30");
       };
-
-      control.addEventListener("pointermove", (event) => {
-        if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
-        pointer = { x: event.clientX, y: event.clientY };
-        if (!frame) frame = window.requestAnimationFrame(renderTilt);
-      }, { passive: true });
-
-      const resetTilt = () => {
-        pointer = null;
-        if (frame) window.cancelAnimationFrame(frame);
+      const reset = () => {
+        point = null;
+        if (frame) cancelAnimationFrame(frame);
         frame = 0;
         book.style.setProperty("--tilt-x", "0deg");
         book.style.setProperty("--tilt-y", "0deg");
-        book.style.setProperty("--shadow-x", "21px");
-        book.style.setProperty("--shadow-y", "30px");
+        book.style.setProperty("--shadow-x", "20px");
+        book.style.setProperty("--shadow-y", "27px");
         book.style.setProperty("--sheen-opacity", "0.08");
       };
-      control.addEventListener("pointerleave", resetTilt, { passive: true });
-      control.addEventListener("blur", resetTilt);
+      control.addEventListener("pointermove", (event) => {
+        if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
+        point = { x: event.clientX, y: event.clientY };
+        if (!frame) frame = requestAnimationFrame(render);
+      }, { passive: true });
+      control.addEventListener("pointerleave", reset, { passive: true });
     }
 
     if (!reduceMotion) {
-      let touchStart = null;
-      let touchPoint = null;
-      let touchFrame = 0;
-      const renderTouchTilt = () => {
-        touchFrame = 0;
-        if (!touchStart || !touchPoint) return;
-        const dx = touchPoint.x - touchStart.x;
-        const dy = touchPoint.y - touchStart.y;
-        if (Math.abs(dx) < 9 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
-        const rect = control.getBoundingClientRect();
-        const positionX = clamp((touchPoint.x - rect.left) / rect.width, 0, 1);
-        const positionY = clamp((touchPoint.y - rect.top) / rect.height, 0, 1);
-        book.style.setProperty("--tilt-y", `${clamp(dx / rect.width * 25, -13, 13).toFixed(2)}deg`);
-        book.style.setProperty("--tilt-x", `${clamp(-dy / rect.height * 8, -4, 4).toFixed(2)}deg`);
-        book.style.setProperty("--shadow-x", `${(21 - dx / rect.width * 12).toFixed(1)}px`);
-        book.style.setProperty("--shadow-y", `${(30 + dy / rect.height * 9).toFixed(1)}px`);
-        book.style.setProperty("--sheen-x", `${(positionX * 100).toFixed(1)}%`);
-        book.style.setProperty("--sheen-y", `${(positionY * 100).toFixed(1)}%`);
-        book.style.setProperty("--sheen-opacity", "0.3");
-      };
-      const resetTouchTilt = () => {
-        if (touchFrame) window.cancelAnimationFrame(touchFrame);
-        touchFrame = 0;
-        touchPoint = null;
+      let start = null;
+      const resetTouch = () => {
+        start = null;
         book.style.setProperty("--tilt-x", "0deg");
         book.style.setProperty("--tilt-y", "0deg");
-        book.style.setProperty("--shadow-x", "21px");
-        book.style.setProperty("--shadow-y", "30px");
+        book.style.setProperty("--shadow-x", "20px");
+        book.style.setProperty("--shadow-y", "27px");
         book.style.setProperty("--sheen-opacity", "0.08");
       };
       control.addEventListener("pointerdown", (event) => {
-        if (event.pointerType !== "touch") return;
-        touchStart = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
-        touchPoint = { x: event.clientX, y: event.clientY };
-      }, { passive: true });
-      control.addEventListener("pointermove", (event) => {
-        if (!touchStart || event.pointerType !== "touch" || event.pointerId !== touchStart.pointerId) return;
-        touchPoint = { x: event.clientX, y: event.clientY };
-        if (!touchFrame) touchFrame = window.requestAnimationFrame(renderTouchTilt);
+        if (event.pointerType === "touch") start = { x: event.clientX, y: event.clientY, id: event.pointerId };
       }, { passive: true });
       control.addEventListener("pointerup", (event) => {
-        if (!touchStart || event.pointerId !== touchStart.pointerId) return;
-        const dx = event.clientX - touchStart.x;
-        const dy = event.clientY - touchStart.y;
-        const hasTurned = Math.abs(dx) >= 22 && Math.abs(dx) > Math.abs(dy) * 1.2;
-        touchStart = null;
-        resetTouchTilt();
-        if (!hasTurned) return;
+        if (!start || event.pointerId !== start.id) return;
+        const dx = event.clientX - start.x;
+        const dy = event.clientY - start.y;
+        const turned = Math.abs(dx) >= 22 && Math.abs(dx) > Math.abs(dy) * 1.2;
+        resetTouch();
+        if (!turned) return;
         control.dataset.swipe = dx < 0 ? "left" : "right";
-        control.dataset.turned = "false";
         control.dataset.suppressClick = "true";
         control.setAttribute("aria-pressed", "true");
-        window.setTimeout(() => { delete control.dataset.suppressClick; }, 500);
-        if (coverHint && control.classList.contains("cover-control--hero")) {
-          coverHint.textContent = "A small turn, by hand. Your vertical scroll stays yours.";
-        }
+        setTimeout(() => delete control.dataset.suppressClick, 450);
       }, { passive: true });
       control.addEventListener("pointercancel", (event) => {
-        if (!touchStart || event.pointerId !== touchStart.pointerId) return;
-        touchStart = null;
-        resetTouchTilt();
+        if (start && event.pointerId === start.id) resetTouch();
       }, { passive: true });
     }
 
@@ -186,51 +142,49 @@
         return;
       }
       const turned = control.getAttribute("aria-pressed") !== "true";
-      delete control.dataset.swipe;
       control.dataset.turned = String(turned);
+      control.removeAttribute("data-swipe");
       control.setAttribute("aria-pressed", String(turned));
-      if (coverHint && control.classList.contains("cover-control--hero")) {
-        const hint = control.closest("[data-cover-stage]")?.querySelector("[data-cover-hint]");
-        coverHint.textContent = turned ? "A new angle. Tap again to return." : (touchLayout ? hint?.dataset.touchCopy : hint?.dataset.pointerCopy) || "Turn the cover at your own pace.";
+      const hint = control.closest("[data-cover-stage]")?.querySelector("[data-cover-hint]");
+      if (hint && control.classList.contains("cover-control--hero")) {
+        hint.textContent = turned ? "A new angle. Tap again to return." :
+          "Move gently across the cover. The light will follow.";
       }
     });
   });
 
+  // Hero lighting only runs while the pointer is actually over the hero.
   const hero = document.querySelector(".hero");
-  const giltPoint = hero?.querySelector(".hero-gilt-point");
   if (hero && finePointer && !reduceMotion) {
+    const point = hero.querySelector(".hero-gilt-point");
     let frame = 0;
     let pointer = null;
-    const renderAtmosphere = () => {
+    const render = () => {
       frame = 0;
       if (!pointer) return;
       const rect = hero.getBoundingClientRect();
-      const px = clamp((pointer.x - rect.left) / rect.width, 0, 1);
-      const py = clamp((pointer.y - rect.top) / rect.height, 0, 1);
-      const offsetX = (px - 0.5) * 22;
-      const offsetY = (py - 0.5) * 16;
-      hero.style.setProperty("--halo-x", `${offsetX.toFixed(1)}px`);
-      hero.style.setProperty("--halo-y", `${offsetY.toFixed(1)}px`);
-      hero.style.setProperty("--product-light-x", `${(-offsetX * 0.45).toFixed(1)}px`);
-      hero.style.setProperty("--product-light-y", `${(-offsetY * 0.45).toFixed(1)}px`);
-
-      if (giltPoint) {
-        const point = giltPoint.getBoundingClientRect();
-        const distance = Math.hypot(pointer.x - (point.left + point.width / 2), pointer.y - (point.top + point.height / 2));
+      const x = (pointer.x - rect.left) / Math.max(rect.width, 1) - 0.5;
+      const y = (pointer.y - rect.top) / Math.max(rect.height, 1) - 0.5;
+      hero.style.setProperty("--halo-x", (x * 22).toFixed(1) + "px");
+      hero.style.setProperty("--halo-y", (y * 16).toFixed(1) + "px");
+      hero.style.setProperty("--product-light-x", (-x * 10).toFixed(1) + "px");
+      hero.style.setProperty("--product-light-y", (-y * 7).toFixed(1) + "px");
+      if (point) {
+        const p = point.getBoundingClientRect();
+        const distance = Math.hypot(pointer.x - (p.left + p.width / 2), pointer.y - (p.top + p.height / 2));
         const proximity = clamp(1 - distance / Math.max(rect.width * 0.42, 1), 0, 1);
         hero.style.setProperty("--gilt-opacity", (0.25 + proximity * 0.65).toFixed(2));
-        hero.style.setProperty("--gilt-glow", `${(2 + proximity * 12).toFixed(1)}px`);
+        hero.style.setProperty("--gilt-glow", (2 + proximity * 10).toFixed(1) + "px");
       }
     };
-
     hero.addEventListener("pointermove", (event) => {
       if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
       pointer = { x: event.clientX, y: event.clientY };
-      if (!frame) frame = window.requestAnimationFrame(renderAtmosphere);
+      if (!frame) frame = requestAnimationFrame(render);
     }, { passive: true });
     hero.addEventListener("pointerleave", () => {
       pointer = null;
-      if (frame) window.cancelAnimationFrame(frame);
+      if (frame) cancelAnimationFrame(frame);
       frame = 0;
       hero.style.setProperty("--halo-x", "0px");
       hero.style.setProperty("--halo-y", "0px");
@@ -241,56 +195,54 @@
     }, { passive: true });
   }
 
+  // One delegated pointer effect covers all magnetic/proximity UI.
   if (finePointer && !reduceMotion) {
-    document.querySelectorAll(".button-primary").forEach((button) => {
-      let frame = 0;
-      let point = null;
-      const update = () => {
-        frame = 0;
-        if (!point) return;
-        const rect = button.getBoundingClientRect();
-        const x = (point.x - (rect.left + rect.width / 2)) * 0.055;
-        const y = (point.y - (rect.top + rect.height / 2)) * 0.055;
-        button.style.setProperty("--magnet-x", `${clamp(x, -3, 3).toFixed(1)}px`);
-        button.style.setProperty("--magnet-y", `${clamp(y, -2, 2).toFixed(1)}px`);
-      };
-      button.addEventListener("pointermove", (event) => {
-        point = { x: event.clientX, y: event.clientY };
-        if (!frame) frame = window.requestAnimationFrame(update);
-      }, { passive: true });
-      button.addEventListener("pointerleave", () => {
-        point = null;
-        if (frame) window.cancelAnimationFrame(frame);
-        frame = 0;
-        button.style.setProperty("--magnet-x", "0px");
-        button.style.setProperty("--magnet-y", "0px");
-      }, { passive: true });
-    });
-
-    document.querySelectorAll(".pattern-item summary, .point-note summary, .margin-note summary").forEach((target) => {
-      let frame = 0;
-      let point = null;
-      const render = () => {
-        frame = 0;
-        if (!point) return;
-        const rect = target.getBoundingClientRect();
-        target.style.setProperty("--proximity-x", `${clamp((point.x - rect.left) / rect.width, 0, 1) * 100}%`);
-        target.style.setProperty("--proximity-y", `${clamp((point.y - rect.top) / rect.height, 0, 1) * 100}%`);
-      };
-      target.addEventListener("pointermove", (event) => {
-        point = { x: event.clientX, y: event.clientY };
-        if (!frame) frame = window.requestAnimationFrame(render);
-      }, { passive: true });
-      target.addEventListener("pointerleave", () => {
-        point = null;
-        if (frame) window.cancelAnimationFrame(frame);
-        frame = 0;
-        target.style.setProperty("--proximity-x", "50%");
-        target.style.setProperty("--proximity-y", "50%");
-      }, { passive: true });
-    });
+    let frame = 0;
+    let lastPoint = null;
+    let activeButton = null;
+    const render = () => {
+      frame = 0;
+      if (!lastPoint || !activeButton) return;
+      const rect = activeButton.getBoundingClientRect();
+      if (activeButton.matches(".button-primary")) {
+        const x = clamp((lastPoint.x - (rect.left + rect.width / 2)) * 0.055, -3, 3);
+        const y = clamp((lastPoint.y - (rect.top + rect.height / 2)) * 0.055, -2, 2);
+        activeButton.style.setProperty("--magnet-x", x.toFixed(1) + "px");
+        activeButton.style.setProperty("--magnet-y", y.toFixed(1) + "px");
+      } else {
+        activeButton.style.setProperty("--proximity-x", clamp((lastPoint.x - rect.left) / rect.width, 0, 1) * 100 + "%");
+        activeButton.style.setProperty("--proximity-y", clamp((lastPoint.y - rect.top) / rect.height, 0, 1) * 100 + "%");
+      }
+    };
+    const handleMove = (event) => {
+      const target = event.target.closest(".button-primary, .pattern-item summary, .point-note summary");
+      if (!target) {
+        if (activeButton) {
+          activeButton.style.removeProperty("--magnet-x");
+          activeButton.style.removeProperty("--magnet-y");
+          activeButton.style.removeProperty("--proximity-x");
+          activeButton.style.removeProperty("--proximity-y");
+        }
+        activeButton = null;
+        return;
+      }
+      activeButton = target;
+      lastPoint = { x: event.clientX, y: event.clientY };
+      if (!frame) frame = requestAnimationFrame(render);
+    };
+    document.addEventListener("pointermove", handleMove, { passive: true });
+    document.addEventListener("pointerout", (event) => {
+      if (activeButton && !event.relatedTarget?.closest?.(".button-primary, .pattern-item summary, .point-note summary")) {
+        activeButton.style.removeProperty("--magnet-x");
+        activeButton.style.removeProperty("--magnet-y");
+        activeButton.style.removeProperty("--proximity-x");
+        activeButton.style.removeProperty("--proximity-y");
+        activeButton = null;
+      }
+    }, { passive: true });
   }
 
+  // Only one discovery item stays open within each group.
   document.querySelectorAll(".discovery-group").forEach((group) => {
     group.querySelectorAll("details[data-discovery-item]").forEach((item) => {
       item.addEventListener("toggle", () => {
@@ -298,8 +250,6 @@
         group.querySelectorAll("details[data-discovery-item][open]").forEach((other) => {
           if (other !== item) other.open = false;
         });
-        const index = [...group.querySelectorAll("details[data-discovery-item]")].indexOf(item) + 1;
-        group.style.setProperty("--active-note", String(index));
       });
     });
   });
@@ -315,70 +265,53 @@
           observer.unobserve(entry.target);
         }
       });
-    }, { threshold: 0.12, rootMargin: "0px 0px -24px 0px" });
+    }, { threshold: 0.12, rootMargin: "0px 0px -20px 0px" });
     revealItems.forEach((item) => revealObserver.observe(item));
   }
 
+  // Scroll work is one rAF and only touches the two stages that actually use it.
   const meter = document.querySelector("[data-journey-meter]");
-  const stages = [...document.querySelectorAll("[data-scroll-stage]")];
-  const visibleStages = new Set();
+  const heroStage = document.querySelector('[data-scroll-stage="hero"]');
+  const purchaseStage = document.querySelector('[data-scroll-stage="purchase"]');
   let scrollFrame = 0;
-  const updateJourney = () => {
+  const updateScrollEffects = () => {
     scrollFrame = 0;
     const viewport = Math.max(window.innerHeight, 1);
     const scrollable = Math.max(document.documentElement.scrollHeight - viewport, 1);
     if (meter) meter.style.setProperty("--reading-progress", clamp(window.scrollY / scrollable, 0, 1).toFixed(4));
 
-    visibleStages.forEach((stage) => {
-      const rect = stage.getBoundingClientRect();
+    if (reduceMotion) return;
+    if (heroStage) {
+      const rect = heroStage.getBoundingClientRect();
       const progress = clamp((viewport - rect.top) / (viewport + Math.max(rect.height, 1)), 0, 1);
-      stage.style.setProperty("--stage-progress", progress.toFixed(3));
-      if (reduceMotion) return;
-
-      if (stage.dataset.scrollStage === "hero") {
-        stage.style.setProperty("--hero-depth-y", `${(-progress * 18).toFixed(1)}px`);
-        stage.style.setProperty("--hero-depth-scale", (1 - progress * 0.018).toFixed(4));
-      } else if (stage.dataset.scrollStage === "book") {
-        stage.style.setProperty("--book-depth-y", `${((0.5 - progress) * 16).toFixed(1)}px`);
-        stage.style.setProperty("--book-depth-scale", (0.97 + progress * 0.04).toFixed(4));
-      } else if (stage.dataset.scrollStage === "purchase") {
-        stage.style.setProperty("--purchase-depth-y", `${((1 - progress) * 22).toFixed(1)}px`);
-        stage.style.setProperty("--purchase-depth-scale", (0.91 + progress * 0.09).toFixed(4));
-        stage.style.setProperty("--purchase-light-level", (0.35 + progress * 0.45).toFixed(2));
-      }
-    });
+      heroStage.style.setProperty("--hero-depth-y", (-progress * 18).toFixed(1) + "px");
+      heroStage.style.setProperty("--hero-depth-scale", (1 - progress * 0.018).toFixed(4));
+    }
+    if (purchaseStage) {
+      const rect = purchaseStage.getBoundingClientRect();
+      const progress = clamp((viewport - rect.top) / (viewport + Math.max(rect.height, 1)), 0, 1);
+      purchaseStage.style.setProperty("--purchase-depth-y", ((1 - progress) * 22).toFixed(1) + "px");
+      purchaseStage.style.setProperty("--purchase-depth-scale", (0.91 + progress * 0.09).toFixed(4));
+      purchaseStage.style.setProperty("--purchase-light-level", (0.35 + progress * 0.45).toFixed(2));
+    }
   };
-  const queueJourneyUpdate = () => {
-    if (!scrollFrame) scrollFrame = window.requestAnimationFrame(updateJourney);
+  const queueScrollEffects = () => {
+    if (!scrollFrame) scrollFrame = requestAnimationFrame(updateScrollEffects);
   };
+  window.addEventListener("scroll", queueScrollEffects, { passive: true });
+  window.addEventListener("resize", queueScrollEffects, { passive: true });
+  queueScrollEffects();
 
-  if ("IntersectionObserver" in window) {
-    const stageObserver = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) visibleStages.add(entry.target);
-        else visibleStages.delete(entry.target);
-        entry.target.classList.toggle("is-in-view", entry.isIntersecting);
-      });
-      queueJourneyUpdate();
-    }, { rootMargin: "12% 0px 12% 0px", threshold: 0 });
-    stages.forEach((stage) => stageObserver.observe(stage));
-  } else {
-    stages.forEach((stage) => visibleStages.add(stage));
-  }
-
-  window.addEventListener("scroll", queueJourneyUpdate, { passive: true });
-  window.addEventListener("resize", queueJourneyUpdate, { passive: true });
-  queueJourneyUpdate();
-
+  // Purchase-stage highlight is pointer/focus driven, never a permanent loop.
   document.querySelectorAll("[data-purchase-cta]").forEach((cta) => {
-    const purchaseStage = cta.closest(".purchase");
-    if (!purchaseStage) return;
-    const showApproach = () => purchaseStage.setAttribute("data-cta-nearby", "true");
-    const resetApproach = () => purchaseStage.removeAttribute("data-cta-nearby");
-    cta.addEventListener("pointerenter", showApproach);
-    cta.addEventListener("pointerleave", resetApproach);
-    cta.addEventListener("focus", showApproach);
-    cta.addEventListener("blur", resetApproach);
+    const stage = cta.closest(".purchase");
+    if (!stage) return;
+    const on = () => stage.setAttribute("data-cta-nearby", "true");
+    const off = () => stage.removeAttribute("data-cta-nearby");
+    cta.addEventListener("pointerenter", on, { passive: true });
+    cta.addEventListener("pointerleave", off, { passive: true });
+    cta.addEventListener("focus", on);
+    cta.addEventListener("blur", off);
   });
 
   const navLinks = [...document.querySelectorAll("[data-nav-link]")];
@@ -388,7 +321,7 @@
       entries.forEach((entry) => {
         if (!entry.isIntersecting) return;
         navLinks.forEach((link) => {
-          const active = link.hash === `#${entry.target.id}`;
+          const active = link.hash === "#" + entry.target.id;
           if (active) link.setAttribute("aria-current", "location");
           else link.removeAttribute("aria-current");
         });
