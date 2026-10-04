@@ -451,3 +451,131 @@ h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -.045em; }
   opacity: .58;
   cursor: not-allowed;
 }
+
+
+/* Cinematic cursor lens + reading scrubber. Both use transforms only for motion. */
+.cursor-fx {
+  position: fixed;
+  z-index: 90;
+  top: 0;
+  left: 0;
+  width: 148px;
+  height: 148px;
+  margin: -74px 0 0 -74px;
+  border: 1px solid rgba(173, 128, 64, .17);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, .18) 0 8%, transparent 30%),
+    radial-gradient(circle at 50% 50%, rgba(208, 174, 113, .11), transparent 64%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .35) inset, 0 16px 34px rgba(52, 40, 61, .06);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(50vw, 50vh, 0);
+  transition: opacity .25s ease;
+  will-change: transform;
+}
+.cursor-fx::before,
+.cursor-fx::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  content: "";
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.cursor-fx::before {
+  width: 6px;
+  height: 6px;
+  border: 1px solid rgba(173, 128, 64, .8);
+  border-radius: 50%;
+  background: var(--paper-pearl);
+}
+.cursor-fx::after {
+  width: 34px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(173, 128, 64, .48), transparent);
+}
+.cursor-fx.is-active { opacity: .86; }
+
+.reading-progress {
+  position: fixed;
+  z-index: 80;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold), var(--violet));
+  transform: scaleX(0);
+  transform-origin: left center;
+  box-shadow: 0 0 9px rgba(173, 128, 64, .2);
+  pointer-events: none;
+  animation: reading-progress linear both;
+  animation-timeline: scroll(root block);
+}
+@keyframes reading-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Make the hero feel like a camera move rather than isolated hover effects. */
+.hero-atmosphere { transform: translate3d(calc(var(--scene-x, 0) * -8px), calc(var(--scene-y, 0) * -5px), 0); transition: transform .28s ease-out; }
+.hero-copy { transform: translate3d(calc(var(--scene-x, 0) * 12px), calc(var(--scene-y, 0) * 8px), 0); transition: transform .42s cubic-bezier(.2,.75,.25,1); }
+.hero-product { transform: translate3d(calc(var(--scene-x, 0) * -10px), calc(var(--scene-y, 0) * -7px - var(--product-lift, 0px)), 0); transition: transform .5s cubic-bezier(.2,.75,.25,1); }
+.hero:has(.cover-control--hero:hover) .hero-product { --product-lift: 4px; }
+
+/* Controlled interaction beats generic hover: every CTA leans toward the pointer. */
+.magnetic-control {
+  transform: translate3d(0,0,0);
+  will-change: transform;
+}
+.magnetic-control.is-magnetic { transition: box-shadow .2s ease, background .2s ease, color .2s ease; }
+.magnetic-control.motion-click { animation: magnetic-click .38s cubic-bezier(.2,.75,.25,1); }
+@keyframes magnetic-click {
+  0% { scale: 1; }
+  45% { scale: .95; }
+  100% { scale: 1; }
+}
+
+/* A tiny light sweep gives sections the “graded” feel as they enter. */
+.js [data-reveal] { position: relative; }
+.js [data-reveal]::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(173,128,64,.35), transparent);
+  content: "";
+  opacity: 0;
+  transform: scaleX(.18);
+  transform-origin: center;
+  transition: opacity .35s ease, transform .8s cubic-bezier(.2,.75,.25,1);
+}
+.js [data-reveal].is-visible::after {
+  opacity: .9;
+  transform: scaleX(1);
+}
+.hero-copy[data-reveal]::after { bottom: .1rem; }
+.recognition-heading[data-reveal]::after,
+.about-layout > [data-reveal]:first-child::after { bottom: -1.3rem; }
+
+@media (hover: hover) and (pointer: fine) {
+  .hero h1 { transition: text-shadow .35s ease; text-shadow: calc(var(--scene-x, 0) * 5px) calc(var(--scene-y, 0) * 3px) 0 rgba(208,174,113,.11); }
+  .cover-control--hero:hover { z-index: 5; }
+  .cover-control--hero:hover .cover-sheen { opacity: .62; }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .cursor-fx { display: none; }
+  .hero-atmosphere,
+  .hero-copy,
+  .hero-product { transform: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor-fx, .reading-progress { display: none; }
+  .hero-atmosphere,
+  .hero-copy,
+  .hero-product { transform: none !important; }
+  .js [data-reveal]::after { display: none; }
+}
