@@ -10,16 +10,11 @@
   const priceId = typeof config.priceId === "string" ? config.priceId : "pri_01m428fdnrr9rza69pzqf5th0v";
   const basePriceLabel = typeof config.basePriceLabel === "string" ? config.basePriceLabel : "₹199";
 
-  const isSafeToken = (value) => /^(live_|test_)[A-Za-z0-9_-]{8,}$/.test(value);
-  const canUsePaddle = Boolean(
-    paddleToken &&
-    isSafeToken(paddleToken) &&
-    window.Paddle &&
-    typeof window.Paddle.Initialize === "function"
-  );
-
+  const tokenLooksValid = /^(live_|test_)[A-Za-z0-9_-]{8,}$/.test(paddleToken);
+  const tokenConfigured = Boolean(paddleToken && tokenLooksValid);
   const priceLabels = [...document.querySelectorAll("[data-local-price]")];
   const priceNotes = [...document.querySelectorAll("[data-price-note]")];
+
   const setPrice = (label, note) => {
     priceLabels.forEach((element) => { element.textContent = label; });
     priceNotes.forEach((element) => { element.textContent = note; });
@@ -27,28 +22,58 @@
 
   setPrice(
     basePriceLabel,
-    canUsePaddle ? "Local currency pricing" : "Add your Paddle client-side token"
+    tokenConfigured ? "Loading local currency…" : "Add your Paddle client-side token"
   );
 
   document.querySelectorAll("[data-purchase-label]").forEach((label) => {
-    if (!canUsePaddle) label.textContent = "Purchase setup required";
-  });
-  document.querySelectorAll("[data-purchase-cta], [data-purchase-button]").forEach((control) => {
-    if (!canUsePaddle) {
-      control.setAttribute("aria-disabled", "true");
-      control.setAttribute("title", "Add a Paddle client-side token in site-config.js to enable checkout.");
-    }
+    label.textContent = tokenConfigured ? "Buy the ebook" : "Purchase setup required";
   });
 
   let paddleReady = false;
+  let paddleLoading = null;
 
-  if (canUsePaddle) {
-    try {
-      if (paddleEnvironment === "sandbox" && typeof window.Paddle.Environment?.set === "function") {
-        window.Paddle.Environment.set("sandbox");
+  const loadPaddle = () => {
+    if (window.Paddle && typeof window.Paddle.Initialize === "function") {
+      return Promise.resolve(window.Paddle);
+    }
+
+    if (paddleLoading) return paddleLoading;
+
+    paddleLoading = new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[data-paddle-loader]');
+      if (existing) {
+        existing.addEventListener("load", () => resolve(window.Paddle), { once: true });
+        existing.addEventListener("error", () => reject(new Error("Paddle.js failed to load.")), { once: true });
+        return;
       }
 
-      window.Paddle.Initialize({
+      const script = document.createElement("script");
+      script.src = "https://cdn.paddle.com/paddle/v2/paddle.js";
+      script.async = true;
+      script.dataset.paddleLoader = "true";
+      script.onload = () => resolve(window.Paddle);
+      script.onerror = () => reject(new Error("Paddle.js failed to load."));
+      document.head.appendChild(script);
+    });
+
+    return paddleLoading;
+  };
+
+  const initializePaddle = async () => {
+    if (!tokenConfigured) return false;
+    if (paddleReady) return true;
+
+    try {
+      const paddle = await loadPaddle();
+      if (!paddle || typeof paddle.Initialize !== "function") {
+        throw new Error("Paddle.js loaded without Paddle.Initialize.");
+      }
+
+      if (paddleEnvironment === "sandbox" && typeof paddle.Environment?.set === "function") {
+        paddle.Environment.set("sandbox");
+      }
+
+      paddle.Initialize({
         token: paddleToken,
         checkout: {
           settings: {
@@ -61,7 +86,7 @@
 
       paddleReady = true;
 
-      window.Paddle.PricePreview({
+      paddle.PricePreview({
         items: [{ priceId, quantity: 1 }]
       }).then((result) => {
         const item = result?.data?.details?.lineItems?.[0];
@@ -78,13 +103,29 @@
         console.error("Paddle price preview failed.", error);
         setPrice(basePriceLabel, "Local price unavailable");
       });
+
+      return true;
     } catch (error) {
       console.error("Paddle initialization failed.", error);
+      setPrice(basePriceLabel, "Paddle checkout unavailable");
+      document.querySelectorAll("[data-purchase-label]").forEach((label) => {
+        label.textContent = "Checkout unavailable";
+      });
+      document.querySelectorAll("[data-purchase-cta], [data-purchase-button]").forEach((control) => {
+        control.setAttribute("aria-disabled", "true");
+        control.setAttribute("title", "Paddle checkout could not be initialized.");
+      });
+      return false;
     }
+  };
+
+  if (tokenConfigured) {
+    initializePaddle();
   }
 
-  const openCheckout = () => {
-    if (!paddleReady || !window.Paddle?.Checkout?.open) return false;
+  const openCheckout = async () => {
+    if (!(await initializePaddle())) return false;
+    if (!window.Paddle?.Checkout?.open) return false;
 
     window.Paddle.Checkout.open({
       items: [{ priceId, quantity: 1 }],
@@ -97,109 +138,22 @@
     return true;
   };
 
-
   document.querySelectorAll("[data-purchase-cta]").forEach((link) => {
     link.removeAttribute("download");
     link.setAttribute("href", "#purchase");
     link.setAttribute("aria-label", "Buy THE ARISE ARC ebook");
-    link.addEventListener("click", (event) => {
+    link.addEventListener("click", async (event) => {
       event.preventDefault();
-      if (!openCheckout()) {
-        setPrice(basePriceLabel, "Checkout setup needed");
-        return;
-      }
-      history.replaceState(null, "", "#purchase");
+      const opened = await openCheckout();
+      if (opened) history.replaceState(null, "", "#purchase");
     });
   });
 
   document.querySelectorAll("[data-purchase-button]").forEach((button) => {
-    button.addEventListener("click", () => {
-      if (!openCheckout()) setPrice(basePriceLabel, "Checkout setup needed");
+    button.addEventListener("click", async () => {
+      await openCheckout();
     });
   });
-
-  // Motion-design layer: one pointer rAF drives the cursor lens, hero depth, and magnetic controls.
-  const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  if (finePointer && !reduceMotion) {
-    const cursorFx = document.querySelector(".cursor-fx");
-    const hero = document.querySelector(".hero");
-    const depthNodes = [...document.querySelectorAll("[data-depth]")].filter((node) => !node.classList.contains("hero-product"));
-    const magneticNodes = [...document.querySelectorAll("[data-magnetic]")];
-
-    let motionFrame = 0;
-    let pointerX = window.innerWidth * 0.5;
-    let pointerY = window.innerHeight * 0.5;
-    let hoverMagnetic = null;
-
-    const renderMotion = () => {
-      motionFrame = 0;
-      const nx = pointerX / Math.max(1, window.innerWidth) - 0.5;
-      const ny = pointerY / Math.max(1, window.innerHeight) - 0.5;
-
-      if (cursorFx) {
-        cursorFx.style.transform = "translate3d(" + pointerX.toFixed(1) + "px," + pointerY.toFixed(1) + "px,0)";
-      }
-
-      if (hero) {
-        hero.style.setProperty("--scene-x", nx.toFixed(4));
-        hero.style.setProperty("--scene-y", ny.toFixed(4));
-      }
-
-      depthNodes.forEach((node) => {
-        const depth = Number(node.dataset.depth) || 0;
-        const x = nx * depth;
-        const y = ny * depth * 0.72;
-        node.style.transform = "translate3d(" + x.toFixed(2) + "px," + y.toFixed(2) + "px,0)";
-      });
-
-      if (hoverMagnetic) {
-        const rect = hoverMagnetic.getBoundingClientRect();
-        const strength = Number(hoverMagnetic.dataset.magnetic) || 0.2;
-        const mx = ((pointerX - rect.left) / Math.max(1, rect.width) - 0.5) * 18 * strength;
-        const my = ((pointerY - rect.top) / Math.max(1, rect.height) - 0.5) * 14 * strength;
-        hoverMagnetic.style.transform = "translate3d(" + mx.toFixed(2) + "px," + my.toFixed(2) + "px,0)";
-        hoverMagnetic.classList.add("is-magnetic");
-      }
-    };
-
-    const queueMotion = () => {
-      if (!motionFrame) motionFrame = requestAnimationFrame(renderMotion);
-    };
-
-    document.addEventListener("pointermove", (event) => {
-      pointerX = event.clientX;
-      pointerY = event.clientY;
-      if (cursorFx) cursorFx.classList.add("is-active");
-      queueMotion();
-    }, { passive: true });
-
-    magneticNodes.forEach((node) => {
-      node.addEventListener("pointerenter", (event) => {
-        if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
-        hoverMagnetic = node;
-        node.classList.add("is-magnetic");
-        queueMotion();
-      }, { passive: true });
-
-      node.addEventListener("pointerleave", () => {
-        if (hoverMagnetic === node) hoverMagnetic = null;
-        node.style.transform = "";
-        node.classList.remove("is-magnetic");
-      }, { passive: true });
-
-      node.addEventListener("pointerdown", () => {
-        node.classList.remove("motion-click");
-        void node.offsetWidth;
-        node.classList.add("motion-click");
-      }, { passive: true });
-
-      node.addEventListener("animationend", () => node.classList.remove("motion-click"), { passive: true });
-    });
-
-    queueMotion();
-  }
 
   // Mobile navigation.
   const menuButton = document.querySelector(".menu-toggle");
