@@ -24,6 +24,22 @@
   let lastTransactionId = null;
   let fulfillmentTimer = 0;
 
+  const storageGet = (key) => {
+    try {
+      return window.sessionStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  };
+
+  const storageSet = (key, value) => {
+    try {
+      window.sessionStorage.setItem(key, value);
+    } catch {
+      // Download recovery still works during the current checkout session.
+    }
+  };
+
   const showPurchaseResult = (state, title, copy) => {
     if (!purchaseResult) return;
     purchaseResult.hidden = false;
@@ -57,7 +73,7 @@
 
   const setPurchaseReady = (transactionId, url) => {
     lastTransactionId = transactionId;
-    sessionStorage.setItem("arise_fulfilled_transaction_id", transactionId);
+    storageSet("arise_fulfilled_transaction_id", transactionId);
     showPurchaseResult(
       "PURCHASE VERIFIED",
       "Your ebook is ready.",
@@ -113,7 +129,7 @@
 
   const beginFulfillmentCheck = (transactionId) => {
     if (!transactionId) return;
-    sessionStorage.setItem("arise_pending_transaction_id", transactionId);
+    storageSet("arise_pending_transaction_id", transactionId);
     setPurchasePending(transactionId);
     clearTimeout(fulfillmentTimer);
     void checkFulfillment(transactionId);
@@ -122,8 +138,8 @@
   const resumeStoredPurchase = () => {
     const params = new URLSearchParams(window.location.search);
     const urlTransactionId = params.get("transaction_id") || params.get("_ptxn");
-    const storedFulfilled = sessionStorage.getItem("arise_fulfilled_transaction_id");
-    const storedPending = sessionStorage.getItem("arise_pending_transaction_id");
+    const storedFulfilled = storageGet("arise_fulfilled_transaction_id");
+    const storedPending = storageGet("arise_pending_transaction_id");
     const transactionId = urlTransactionId || storedFulfilled || storedPending;
 
     if (!transactionId || !/^txn_[a-z0-9]{26}$/.test(transactionId)) return;
