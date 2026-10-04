@@ -3,7 +3,6 @@
 
   document.documentElement.classList.add("js");
 
-  const ebookUrl = "./The_Arise_Arc_Ebook.pdf";
   const config = window.ARISE_ARC_CONFIG || {};
   const paddleToken = typeof config.clientToken === "string" ? config.clientToken.trim() : "";
   const paddleEnvironment = paddleToken.startsWith("test_") ? "sandbox" : "production";
@@ -32,7 +31,13 @@
   );
 
   document.querySelectorAll("[data-purchase-label]").forEach((label) => {
-    if (!canUsePaddle) label.textContent = "Buy the ebook";
+    if (!canUsePaddle) label.textContent = "Purchase setup required";
+  });
+  document.querySelectorAll("[data-purchase-cta], [data-purchase-button]").forEach((control) => {
+    if (!canUsePaddle) {
+      control.setAttribute("aria-disabled", "true");
+      control.setAttribute("title", "Add a Paddle client-side token in site-config.js to enable checkout.");
+    }
   });
 
   let paddleReady = false;
