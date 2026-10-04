@@ -9,11 +9,128 @@
   const productId = typeof config.productId === "string" ? config.productId : "pro_01m428dqzbege0b6h8gh9rkv72";
   const priceId = typeof config.priceId === "string" ? config.priceId : "pri_01m428fdnrr9rza69pzqf5th0v";
   const basePriceLabel = typeof config.basePriceLabel === "string" ? config.basePriceLabel : "₹199";
+  const fulfillmentEndpoint = typeof config.fulfillmentEndpoint === "string" ? config.fulfillmentEndpoint.replace(/\/$/, "") : "https://uynrbgxrztxlusjgbvbd.supabase.co/functions/v1/arise-fulfillment";
 
   const tokenLooksValid = /^(live_|test_)[A-Za-z0-9_-]{8,}$/.test(paddleToken);
   const tokenConfigured = Boolean(paddleToken && tokenLooksValid);
   const priceLabels = [...document.querySelectorAll("[data-local-price]")];
   const priceNotes = [...document.querySelectorAll("[data-price-note]")];
+  const purchaseResult = document.querySelector("[data-purchase-result]");
+  const purchaseState = document.querySelector("[data-purchase-state]");
+  const purchaseResultTitle = document.querySelector("[data-purchase-result-title]");
+  const purchaseResultCopy = document.querySelector("[data-purchase-result-copy]");
+  const downloadLink = document.querySelector("[data-download-link]");
+  const purchaseRetry = document.querySelector("[data-purchase-retry]");
+  let lastTransactionId = null;
+  let fulfillmentTimer = 0;
+
+  const showPurchaseResult = (state, title, copy) => {
+    if (!purchaseResult) return;
+    purchaseResult.hidden = false;
+    if (purchaseState) purchaseState.textContent = state;
+    if (purchaseResultTitle) purchaseResultTitle.textContent = title;
+    if (purchaseResultCopy) purchaseResultCopy.textContent = copy;
+  };
+
+  const hideDownload = () => {
+    if (!downloadLink) return;
+    downloadLink.hidden = true;
+    downloadLink.removeAttribute("href");
+  };
+
+  const showDownload = (url) => {
+    if (!downloadLink || !url) return;
+    downloadLink.href = url;
+    downloadLink.hidden = false;
+  };
+
+  const setPurchasePending = (transactionId) => {
+    lastTransactionId = transactionId;
+    showPurchaseResult(
+      "PAYMENT RECEIVED",
+      "Confirming your purchase.",
+      "Your payment reached Paddle. We are waiting for the verified fulfillment record before unlocking the ebook."
+    );
+    hideDownload();
+    if (purchaseRetry) purchaseRetry.hidden = true;
+  };
+
+  const setPurchaseReady = (transactionId, url) => {
+    lastTransactionId = transactionId;
+    sessionStorage.setItem("arise_fulfilled_transaction_id", transactionId);
+    showPurchaseResult(
+      "PURCHASE VERIFIED",
+      "Your ebook is ready.",
+      "Paddle confirmed the purchase and the fulfillment service has unlocked your copy."
+    );
+    showDownload(url);
+    if (purchaseRetry) purchaseRetry.hidden = true;
+  };
+
+  const setPurchaseWaiting = () => {
+    showPurchaseResult(
+      "PAYMENT RECEIVED",
+      "Still confirming.",
+      "The payment is complete, but the fulfillment webhook has not reached us yet. Check again in a moment."
+    );
+    if (purchaseRetry) purchaseRetry.hidden = false;
+  };
+
+  const checkFulfillment = async (transactionId, attempt = 0) => {
+    if (!transactionId || !/^txn_[a-z0-9]{26}$/.test(transactionId)) return false;
+
+    try {
+      const url = new URL(fulfillmentEndpoint);
+      url.searchParams.set("transaction_id", transactionId);
+
+      const response = await fetch(url.toString(), {
+        method: "GET",
+        headers: { "Accept": "application/json" },
+        cache: "no-store"
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && data?.fulfilled && data?.download_url) {
+        setPurchaseReady(transactionId, data.download_url);
+        return true;
+      }
+    } catch (error) {
+      console.error("Fulfillment check failed.", error);
+    }
+
+    if (attempt < 14 && lastTransactionId === transactionId) {
+      clearTimeout(fulfillmentTimer);
+      fulfillmentTimer = window.setTimeout(() => {
+        checkFulfillment(transactionId, attempt + 1);
+      }, 2000);
+    } else {
+      setPurchaseWaiting();
+    }
+
+    return false;
+  };
+
+  const beginFulfillmentCheck = (transactionId) => {
+    if (!transactionId) return;
+    sessionStorage.setItem("arise_pending_transaction_id", transactionId);
+    setPurchasePending(transactionId);
+    clearTimeout(fulfillmentTimer);
+    void checkFulfillment(transactionId);
+  };
+
+  const resumeStoredPurchase = () => {
+    const params = new URLSearchParams(window.location.search);
+    const urlTransactionId = params.get("transaction_id") || params.get("_ptxn");
+    const storedFulfilled = sessionStorage.getItem("arise_fulfilled_transaction_id");
+    const storedPending = sessionStorage.getItem("arise_pending_transaction_id");
+    const transactionId = urlTransactionId || storedFulfilled || storedPending;
+
+    if (!transactionId || !/^txn_[a-z0-9]{26}$/.test(transactionId)) return;
+
+    history.replaceState(null, "", "#purchase");
+    beginFulfillmentCheck(transactionId);
+  };
 
   const setPrice = (label, note) => {
     priceLabels.forEach((element) => { element.textContent = label; });
@@ -75,6 +192,27 @@
 
       paddle.Initialize({
         token: paddleToken,
+        eventCallback: (event) => {
+          if (event?.name !== "checkout.completed") return;
+
+          const transactionId = event?.data?.transaction_id;
+          if (!transactionId) {
+            showPurchaseResult(
+              "PAYMENT RECEIVED",
+              "Purchase completed.",
+              "Paddle completed checkout, but no transaction ID was returned. Please contact support."
+            );
+            return;
+          }
+
+          try {
+            paddle.Checkout.close();
+          } catch {
+            // Checkout may already be closed by Paddle.
+          }
+
+          beginFulfillmentCheck(transactionId);
+        },
         checkout: {
           settings: {
             displayMode: "overlay",
@@ -154,6 +292,14 @@
       await openCheckout();
     });
   });
+
+  purchaseRetry?.addEventListener("click", () => {
+    if (!lastTransactionId) return;
+    purchaseRetry.hidden = true;
+    beginFulfillmentCheck(lastTransactionId);
+  });
+
+  resumeStoredPurchase();
 
   // Mobile navigation.
   const menuButton = document.querySelector(".menu-toggle");
