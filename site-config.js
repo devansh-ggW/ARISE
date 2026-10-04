@@ -5,5 +5,6 @@ window.ARISE_ARC_CONFIG = {
   environment: "production",
   productId: "pro_01m428dqzbege0b6h8gh9rkv72",
   priceId: "pri_01m428fdnrr9rza69pzqf5th0v",
-  basePriceLabel: "₹199"
+  basePriceLabel: "₹199",
+  fulfillmentEndpoint: "https://uynrbgxrztxlusjgbvbd.supabase.co/functions/v1/arise-fulfillment"
 };
