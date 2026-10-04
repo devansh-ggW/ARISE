@@ -444,3 +444,10 @@ h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -.045em; }
   .purchase-trigger { width: 100%; }
   .price-row { grid-template-columns: auto 1fr; }
 }
+
+
+[data-purchase-cta][aria-disabled="true"],
+[data-purchase-button][aria-disabled="true"] {
+  opacity: .58;
+  cursor: not-allowed;
+}
