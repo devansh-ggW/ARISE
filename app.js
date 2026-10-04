@@ -118,6 +118,91 @@
     });
   });
 
+  // Motion-design layer: one pointer rAF drives the cursor lens, hero depth, and magnetic controls.
+  const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (finePointer && !reduceMotion) {
+    const cursorFx = document.querySelector(".cursor-fx");
+    const hero = document.querySelector(".hero");
+    const depthNodes = [...document.querySelectorAll("[data-depth]")];
+    const magneticNodes = [...document.querySelectorAll("[data-magnetic]")];
+
+    let motionFrame = 0;
+    let pointerX = window.innerWidth * 0.5;
+    let pointerY = window.innerHeight * 0.5;
+    let hoverMagnetic = null;
+
+    const renderMotion = () => {
+      motionFrame = 0;
+      const nx = pointerX / Math.max(1, window.innerWidth) - 0.5;
+      const ny = pointerY / Math.max(1, window.innerHeight) - 0.5;
+
+      if (cursorFx) {
+        cursorFx.style.transform = "translate3d(" + pointerX.toFixed(1) + "px," + pointerY.toFixed(1) + "px,0)";
+      }
+
+      if (hero) {
+        const heroRect = hero.getBoundingClientRect();
+        const hx = ((pointerX - heroRect.left) / Math.max(1, heroRect.width) - 0.5);
+        const hy = ((pointerY - heroRect.top) / Math.max(1, heroRect.height) - 0.5);
+        hero.style.setProperty("--scene-x", hx.toFixed(4));
+        hero.style.setProperty("--scene-y", hy.toFixed(4));
+      }
+
+      depthNodes.forEach((node) => {
+        const depth = Number(node.dataset.depth) || 0;
+        const x = nx * depth;
+        const y = ny * depth * 0.72;
+        node.style.transform = "translate3d(" + x.toFixed(2) + "px," + y.toFixed(2) + "px,0)";
+      });
+
+      if (hoverMagnetic) {
+        const rect = hoverMagnetic.getBoundingClientRect();
+        const strength = Number(hoverMagnetic.dataset.magnetic) || 0.2;
+        const mx = ((pointerX - rect.left) / Math.max(1, rect.width) - 0.5) * 18 * strength;
+        const my = ((pointerY - rect.top) / Math.max(1, rect.height) - 0.5) * 14 * strength;
+        hoverMagnetic.style.transform = "translate3d(" + mx.toFixed(2) + "px," + my.toFixed(2) + "px,0)";
+        hoverMagnetic.classList.add("is-magnetic");
+      }
+    };
+
+    const queueMotion = () => {
+      if (!motionFrame) motionFrame = requestAnimationFrame(renderMotion);
+    };
+
+    document.addEventListener("pointermove", (event) => {
+      pointerX = event.clientX;
+      pointerY = event.clientY;
+      queueMotion();
+    }, { passive: true });
+
+    magneticNodes.forEach((node) => {
+      node.addEventListener("pointerenter", (event) => {
+        if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
+        hoverMagnetic = node;
+        node.classList.add("is-magnetic");
+        queueMotion();
+      }, { passive: true });
+
+      node.addEventListener("pointerleave", () => {
+        if (hoverMagnetic === node) hoverMagnetic = null;
+        node.style.transform = "";
+        node.classList.remove("is-magnetic");
+      }, { passive: true });
+
+      node.addEventListener("pointerdown", () => {
+        node.classList.remove("motion-click");
+        void node.offsetWidth;
+        node.classList.add("motion-click");
+      }, { passive: true });
+
+      node.addEventListener("animationend", () => node.classList.remove("motion-click"), { passive: true });
+    });
+
+    queueMotion();
+  }
+
   // Mobile navigation.
   const menuButton = document.querySelector(".menu-toggle");
   const nav = document.querySelector("#primary-nav");
