@@ -143,11 +143,8 @@
       }
 
       if (hero) {
-        const heroRect = hero.getBoundingClientRect();
-        const hx = ((pointerX - heroRect.left) / Math.max(1, heroRect.width) - 0.5);
-        const hy = ((pointerY - heroRect.top) / Math.max(1, heroRect.height) - 0.5);
-        hero.style.setProperty("--scene-x", hx.toFixed(4));
-        hero.style.setProperty("--scene-y", hy.toFixed(4));
+        hero.style.setProperty("--scene-x", nx.toFixed(4));
+        hero.style.setProperty("--scene-y", ny.toFixed(4));
       }
 
       depthNodes.forEach((node) => {
@@ -249,6 +246,8 @@
         "rotateX(" + (baseX - y * 7).toFixed(2) +
         "deg) rotateY(" + (baseY + x * 10).toFixed(2) +
         "deg) rotateZ(-2deg)";
+      book.style.setProperty("--sheen-x", ((x + 0.5) * 100).toFixed(1) + "%");
+      book.style.setProperty("--sheen-y", ((y + 0.5) * 100).toFixed(1) + "%");
     };
 
     const queueHover = () => {
@@ -282,6 +281,8 @@
       book.style.transition = "";
       book.style.transform = "rotateX(-2deg) rotateY(" +
         (control.dataset.turned === "true" ? "8deg" : "0deg") + ") rotateZ(-2deg)";
+      book.style.removeProperty("--sheen-x");
+      book.style.removeProperty("--sheen-y");
     }, { passive: true });
 
     control.addEventListener("click", () => {
