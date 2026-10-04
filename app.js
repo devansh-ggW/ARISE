@@ -80,7 +80,7 @@
       const baseX = control.dataset.turned === "true" ? -2 : 0;
 
       book.style.transform =
-        "perspective(1300px) rotateX(" + (baseX - y * 7).toFixed(2) +
+        "rotateX(" + (baseX - y * 7).toFixed(2) +
         "deg) rotateY(" + (baseY + x * 10).toFixed(2) +
         "deg) rotateZ(-2deg)";
     };
@@ -114,8 +114,8 @@
       frame = 0;
       book.style.willChange = "auto";
       book.style.transition = "";
-      book.style.transform = "perspective(1300px) rotateX(-2deg) rotateY(" +
-        (control.dataset.turned === "true" ? "8deg" : "0deg") + "deg) rotateZ(-2deg)";
+      book.style.transform = "rotateX(-2deg) rotateY(" +
+        (control.dataset.turned === "true" ? "8deg" : "0deg") + ") rotateZ(-2deg)";
     }, { passive: true });
 
     control.addEventListener("click", () => {
