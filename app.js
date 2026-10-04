@@ -5,37 +5,105 @@
 
   const ebookUrl = "./The_Arise_Arc_Ebook.pdf";
   const config = window.ARISE_ARC_CONFIG || {};
-  const futurePurchaseUrl = typeof config.purchaseUrl === "string" ? config.purchaseUrl.trim() : "";
+  const paddleToken = typeof config.clientToken === "string" ? config.clientToken.trim() : "";
+  const paddleEnvironment = config.environment === "sandbox" ? "sandbox" : "production";
+  const productId = typeof config.productId === "string" ? config.productId : "pro_01m428dqzbege0b6h8gh9rkv72";
+  const priceId = typeof config.priceId === "string" ? config.priceId : "pri_01m428fdnrr9rza69pzqf5th0v";
+  const basePriceLabel = typeof config.basePriceLabel === "string" ? config.basePriceLabel : "₹199";
 
-  const isSafeHttps = (value) => {
-    try {
-      const url = new URL(value);
-      return url.protocol === "https:" && !!url.hostname && !url.username && !url.password;
-    } catch {
-      return false;
-    }
+  const isSafeToken = (value) => /^(live_|test_)[A-Za-z0-9_-]{8,}$/.test(value);
+  const canUsePaddle = Boolean(
+    paddleToken &&
+    isSafeToken(paddleToken) &&
+    window.Paddle &&
+    typeof window.Paddle.Initialize === "function"
+  );
+
+  const priceLabels = [...document.querySelectorAll("[data-local-price]")];
+  const priceNotes = [...document.querySelectorAll("[data-price-note]")];
+  const setPrice = (label, note) => {
+    priceLabels.forEach((element) => { element.textContent = label; });
+    priceNotes.forEach((element) => { element.textContent = note; });
   };
 
-  // Free for now. A future HTTPS checkout can take over these same links.
-  const usingCheckout = Boolean(futurePurchaseUrl && isSafeHttps(futurePurchaseUrl));
-  const ctaUrl = usingCheckout ? futurePurchaseUrl : ebookUrl;
+  setPrice(
+    basePriceLabel,
+    canUsePaddle ? "Local currency pricing" : "Checkout setup needed"
+  );
+
+  let paddleReady = false;
+
+  if (canUsePaddle) {
+    try {
+      if (paddleEnvironment === "sandbox" && typeof window.Paddle.Environment?.set === "function") {
+        window.Paddle.Environment.set("sandbox");
+      }
+
+      window.Paddle.Initialize({
+        token: paddleToken,
+        checkout: {
+          settings: {
+            displayMode: "overlay",
+            theme: "light",
+            locale: "en"
+          }
+        }
+      });
+
+      paddleReady = true;
+
+      window.Paddle.PricePreview({
+        items: [{ priceId, quantity: 1 }]
+      }).then((result) => {
+        const item = result?.data?.details?.lineItems?.[0];
+        const localizedPrice = item?.formattedTotals?.subtotal;
+        const countryCode = result?.data?.details?.address?.countryCode;
+
+        if (!localizedPrice) throw new Error("Paddle returned no localized price.");
+
+        setPrice(
+          localizedPrice,
+          countryCode ? "Local price · " + countryCode : "Local currency pricing"
+        );
+      }).catch((error) => {
+        console.error("Paddle price preview failed.", error);
+        setPrice(basePriceLabel, "Local price unavailable");
+      });
+    } catch (error) {
+      console.error("Paddle initialization failed.", error);
+    }
+  }
+
+  const openCheckout = () => {
+    if (!paddleReady || !window.Paddle?.Checkout?.open) return false;
+
+    window.Paddle.Checkout.open({
+      items: [{ priceId, quantity: 1 }],
+      settings: {
+        displayMode: "overlay",
+        theme: "light",
+        locale: "en"
+      }
+    });
+    return true;
+  };
+
 
   document.querySelectorAll("[data-purchase-cta]").forEach((link) => {
-    link.href = ctaUrl;
-    if (usingCheckout) {
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.removeAttribute("download");
-      link.setAttribute("aria-label", "Get THE ARISE ARC ebook; opens the purchase page in a new tab");
-    } else {
-      link.setAttribute("download", "");
-      link.removeAttribute("target");
-      link.removeAttribute("rel");
-      link.setAttribute("aria-label", "Download the free THE ARISE ARC ebook");
-    }
+    link.removeAttribute("download");
+    link.setAttribute("href", "#purchase");
+    link.setAttribute("aria-label", "Buy THE ARISE ARC ebook");
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (!openCheckout()) return;
+      history.replaceState(null, "", "#purchase");
+    });
+  });
 
-    const label = link.querySelector("[data-purchase-label]");
-    if (label) label.textContent = usingCheckout ? "Get the ebook" : "Download the free ebook";
+  document.querySelectorAll("[data-purchase-button]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openCheckout();
+    });
   });
 
   // Mobile navigation.
