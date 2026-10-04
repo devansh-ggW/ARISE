@@ -572,11 +572,7 @@
     });
   });
 
-  purchaseRetry?.addEventListener("click", () => {
-    if (!lastTransactionId) return;
-    purchaseRetry.hidden = true;
-    beginFulfillmentCheck(lastTransactionId);
-  });
+
 
   resumeStoredPurchase();
 
