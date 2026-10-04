@@ -58,16 +58,75 @@
     if (event.key === "Escape") setMenu(false);
   });
 
-  // The cover remains tactile without a per-frame pointer animation.
+  // The hero cover tracks the mouse with one tiny rAF loop, only while hovered.
+  // All geometry is cached on pointerenter, so the frame callback never measures layout.
   document.querySelectorAll("[data-cover-control]").forEach((control) => {
     const book = control.querySelector("[data-cover-tilt]");
     if (!book) return;
+
+    let frame = 0;
+    let rect = null;
+    let pointerX = 0;
+    let pointerY = 0;
+    let hovering = false;
+
+    const renderHover = () => {
+      frame = 0;
+      if (!hovering || !rect) return;
+
+      const x = Math.max(0, Math.min(1, (pointerX - rect.left) / rect.width)) - 0.5;
+      const y = Math.max(0, Math.min(1, (pointerY - rect.top) / rect.height)) - 0.5;
+      const baseY = control.dataset.turned === "true" ? 8 : 0;
+      const baseX = control.dataset.turned === "true" ? -2 : 0;
+
+      book.style.transform =
+        "perspective(1300px) rotateX(" + (baseX - y * 7).toFixed(2) +
+        "deg) rotateY(" + (baseY + x * 10).toFixed(2) +
+        "deg) rotateZ(-2deg)";
+    };
+
+    const queueHover = () => {
+      if (!frame) frame = requestAnimationFrame(renderHover);
+    };
+
+    control.addEventListener("pointerenter", (event) => {
+      if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
+      rect = control.getBoundingClientRect();
+      hovering = true;
+      book.style.willChange = "transform";
+      book.style.transition = "none";
+      pointerX = event.clientX;
+      pointerY = event.clientY;
+      queueHover();
+    }, { passive: true });
+
+    control.addEventListener("pointermove", (event) => {
+      if (!hovering || (event.pointerType !== "mouse" && event.pointerType !== "pen")) return;
+      pointerX = event.clientX;
+      pointerY = event.clientY;
+      queueHover();
+    }, { passive: true });
+
+    control.addEventListener("pointerleave", () => {
+      hovering = false;
+      rect = null;
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+      book.style.willChange = "auto";
+      book.style.transition = "";
+      book.style.transform = "perspective(1300px) rotateX(-2deg) rotateY(" +
+        (control.dataset.turned === "true" ? "8deg" : "0deg") + "deg) rotateZ(-2deg)";
+    }, { passive: true });
 
     control.addEventListener("click", () => {
       const turned = control.getAttribute("aria-pressed") !== "true";
       control.dataset.turned = String(turned);
       control.removeAttribute("data-swipe");
       control.setAttribute("aria-pressed", String(turned));
+
+      if (hovering) {
+        queueHover();
+      }
 
       const hint = control.closest("[data-cover-stage]")?.querySelector("[data-cover-hint]");
       if (hint && control.classList.contains("cover-control--hero")) {
@@ -77,7 +136,7 @@
       }
     });
 
-    // Lightweight swipe recognition: no live dragging and no rAF.
+    // Touch keeps its lightweight swipe/tap behavior without affecting vertical scroll.
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       let startX = 0;
       let startY = 0;
