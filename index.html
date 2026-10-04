@@ -20,6 +20,8 @@
     <script src="./app.js" defer></script>
   </head>
   <body>
+    <div class="cursor-fx" aria-hidden="true"><span class="cursor-fx-core"></span></div>
+    <div class="reading-progress" aria-hidden="true"></div>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
       <a class="wordmark" href="#home" aria-label="THE ARISE ARC home">
@@ -46,7 +48,7 @@
           <span class="edition-caption">A PRACTICE OF RETURNING</span>
         </div>
 
-        <div class="hero-atmosphere" aria-hidden="true">
+        <div class="hero-atmosphere" aria-hidden="true" data-depth="8">
           <div class="hero-halo"></div>
           <div class="hero-architecture hero-architecture--one"></div>
           <div class="hero-architecture hero-architecture--two"></div>
@@ -54,15 +56,15 @@
           <div class="hero-filament"></div>
         </div>
 
-        <div class="hero-copy" data-reveal>
+        <div class="hero-copy" data-reveal data-depth="12">
           <p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span>A practical guide to a stronger you</p>
           <h1 id="hero-title">Stop <em>starting</em><br />over.</h1>
           <p class="hero-deck">Build consistency. Stay disciplined. Take back your attention.</p>
           <p class="hero-intro">For the moments you know what matters, but keep getting pulled elsewhere.</p>
-          <a class="button button-primary hero-entry" href="#purchase" data-purchase-cta><span data-purchase-label>Buy the ebook</span><span class="button-arrow" aria-hidden="true">↗</span></a>
+          <a class="button button-primary hero-entry magnetic-control" href="#purchase" data-purchase-cta data-magnetic="0.28"><span data-purchase-label>Buy the ebook</span><span class="button-arrow" aria-hidden="true">↗</span></a>
         </div>
 
-        <figure class="hero-product" data-reveal data-cover-stage>
+        <figure class="hero-product" data-reveal data-cover-stage data-depth="-10">
           <div class="product-light" aria-hidden="true"></div>
           <div class="product-orbit product-orbit--outer" aria-hidden="true"><span class="orbit-point"></span></div>
           <div class="product-orbit product-orbit--inner" aria-hidden="true"></div>
@@ -103,7 +105,7 @@
             <li data-reveal><details class="pattern-item" data-discovery-item><summary><span class="list-mark">02</span><span class="pattern-line">You plan more than you begin.</span><span class="discovery-mark" aria-hidden="true"></span></summary><p class="pattern-note">A perfect plan can become another way to postpone the first step.</p></details></li>
             <li data-reveal><details class="pattern-item" data-discovery-item><summary><span class="list-mark">03</span><span class="pattern-line">You start strong, then lose the thread.</span><span class="discovery-mark" aria-hidden="true"></span></summary><p class="pattern-note">The work gets quieter, and attention moves somewhere easier.</p></details></li>
           </ol>
-        <p class="quiet-callout" data-reveal><span class="small-star" aria-hidden="true">✦</span> Busy isn’t always the same as moving forward.</p>
+        <p class="quiet-callout kinetic-line" data-reveal><span class="small-star" aria-hidden="true">✦</span> Busy isn’t always the same as moving forward.</p>
       </section>
 
       <section class="book-section section-shell" id="the-book" aria-labelledby="book-title" >
@@ -115,7 +117,7 @@
           <p class="lead">Build consistency. Stay disciplined. Take back your attention.</p>
           <p>A practical ebook for people tired of restarting. Read it, keep it, and come back to it when you need it.</p>
           <div class="price-row" aria-live="polite"><span class="price-label">YOUR LOCAL PRICE</span><strong data-local-price>₹199</strong><span class="price-note" data-price-note>Loading local currency…</span></div>
-          <a class="button button-primary" href="#purchase" data-purchase-cta><span data-purchase-label>Buy the ebook</span><span class="button-arrow" aria-hidden="true">↗</span></a>
+          <a class="button button-primary magnetic-control" href="#purchase" data-purchase-cta data-magnetic="0.28"><span data-purchase-label>Buy the ebook</span><span class="button-arrow" aria-hidden="true">↗</span></a>
         </div>
       </section>
 
@@ -171,7 +173,7 @@
 
     <footer class="site-footer">
       <section class="purchase-bar" id="purchase" aria-labelledby="purchase-title">
-      <div class="purchase-bar-copy"><span class="eyebrow">THE ARISE ARC</span><h2 id="purchase-title">Read the complete guide.</h2><p><strong data-local-price>₹199</strong> <span data-price-note>Local price loading…</span></p></div><button class="button button-primary purchase-trigger" type="button" data-purchase-button><span data-purchase-label>Buy the ebook</span><span class="button-arrow" aria-hidden="true">↗</span></button></section>
+      <div class="purchase-bar-copy"><span class="eyebrow">THE ARISE ARC</span><h2 id="purchase-title">Read the complete guide.</h2><p><strong data-local-price>₹199</strong> <span data-price-note>Local price loading…</span></p></div><button class="button button-primary purchase-trigger magnetic-control" type="button" data-purchase-button data-magnetic="0.24"><span data-purchase-label>Buy the ebook</span><span class="button-arrow" aria-hidden="true">↗</span></button></section>
 
       <div class="footer-top">
         <a class="wordmark wordmark--footer" href="#home" aria-label="THE ARISE ARC home"><span class="wordmark-mark" aria-hidden="true"><span></span></span><span class="wordmark-type"><span>THE</span> ARISE ARC</span></a>
