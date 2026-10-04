@@ -16,6 +16,7 @@
     <link rel="preload" as="image" href="./cover.webp" fetchpriority="high" />
     <link rel="stylesheet" href="./styles.css" />
     <script src="./site-config.js"></script>
+    <script src="https://cdn.paddle.com/paddle/v2/paddle.js" defer></script>
     <script src="./app.js" defer></script>
   </head>
   <body>
@@ -58,7 +59,7 @@
           <h1 id="hero-title">Stop <em>starting</em><br />over.</h1>
           <p class="hero-deck">Build consistency. Stay disciplined. Take back your attention.</p>
           <p class="hero-intro">For the moments you know what matters, but keep getting pulled elsewhere.</p>
-          <a class="button button-primary hero-entry" href="./The_Arise_Arc_Ebook.pdf" download data-purchase-cta data-download-label="Download the free ebook"><span data-purchase-label>Download the free ebook</span><span class="button-arrow" aria-hidden="true">↓</span></a>
+          <a class="button button-primary hero-entry" href="#purchase" data-purchase-cta><span data-purchase-label>Buy the ebook</span><span class="button-arrow" aria-hidden="true">↗</span></a>
         </div>
 
         <figure class="hero-product" data-reveal data-cover-stage>
@@ -113,7 +114,8 @@
           <h2 id="book-title">THE <em>ARISE<br />ARC.</em></h2>
           <p class="lead">Build consistency. Stay disciplined. Take back your attention.</p>
           <p>A practical ebook for people tired of restarting. Read it, keep it, and come back to it when you need it.</p>
-          <a class="button button-primary" href="./The_Arise_Arc_Ebook.pdf" download data-purchase-cta><span data-purchase-label>Download the free ebook</span><span class="button-arrow" aria-hidden="true">↓</span></a>
+          <div class="price-row" aria-live="polite"><span class="price-label">YOUR LOCAL PRICE</span><strong data-local-price>₹199</strong><span class="price-note" data-price-note>Loading local currency…</span></div>
+          <a class="button button-primary" href="#purchase" data-purchase-cta><span data-purchase-label>Buy the ebook</span><span class="button-arrow" aria-hidden="true">↗</span></a>
         </div>
       </section>
 
@@ -168,6 +170,9 @@
 </main>
 
     <footer class="site-footer">
+      <section class="purchase-bar" id="purchase" aria-labelledby="purchase-title">
+      <div class="purchase-bar-copy"><span class="eyebrow">THE ARISE ARC</span><h2 id="purchase-title">Read the complete guide.</h2><p><strong data-local-price>₹199</strong> <span data-price-note>Local price loading…</span></p></div><button class="button button-primary purchase-trigger" type="button" data-purchase-button><span data-purchase-label>Buy the ebook</span><span class="button-arrow" aria-hidden="true">↗</span></button></section>
+
       <div class="footer-top">
         <a class="wordmark wordmark--footer" href="#home" aria-label="THE ARISE ARC home"><span class="wordmark-mark" aria-hidden="true"><span></span></span><span class="wordmark-type"><span>THE</span> ARISE ARC</span></a>
         <p>Build consistency.<br />Stay disciplined.<br />Take back your attention.</p>
