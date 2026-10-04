@@ -125,7 +125,7 @@
   if (finePointer && !reduceMotion) {
     const cursorFx = document.querySelector(".cursor-fx");
     const hero = document.querySelector(".hero");
-    const depthNodes = [...document.querySelectorAll("[data-depth]")];
+    const depthNodes = [...document.querySelectorAll("[data-depth]")].filter((node) => !node.classList.contains("hero-product"));
     const magneticNodes = [...document.querySelectorAll("[data-magnetic]")];
 
     let motionFrame = 0;
@@ -174,6 +174,7 @@
     document.addEventListener("pointermove", (event) => {
       pointerX = event.clientX;
       pointerY = event.clientY;
+      if (cursorFx) cursorFx.classList.add("is-active");
       queueMotion();
     }, { passive: true });
 
