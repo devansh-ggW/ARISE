@@ -6,7 +6,7 @@
   const ebookUrl = "./The_Arise_Arc_Ebook.pdf";
   const config = window.ARISE_ARC_CONFIG || {};
   const paddleToken = typeof config.clientToken === "string" ? config.clientToken.trim() : "";
-  const paddleEnvironment = config.environment === "sandbox" ? "sandbox" : "production";
+  const paddleEnvironment = paddleToken.startsWith("test_") ? "sandbox" : "production";
   const productId = typeof config.productId === "string" ? config.productId : "pro_01m428dqzbege0b6h8gh9rkv72";
   const priceId = typeof config.priceId === "string" ? config.priceId : "pri_01m428fdnrr9rza69pzqf5th0v";
   const basePriceLabel = typeof config.basePriceLabel === "string" ? config.basePriceLabel : "₹199";
@@ -28,8 +28,12 @@
 
   setPrice(
     basePriceLabel,
-    canUsePaddle ? "Local currency pricing" : "Checkout setup needed"
+    canUsePaddle ? "Local currency pricing" : "Add your Paddle client-side token"
   );
+
+  document.querySelectorAll("[data-purchase-label]").forEach((label) => {
+    if (!canUsePaddle) label.textContent = "Buy the ebook";
+  });
 
   let paddleReady = false;
 
@@ -95,14 +99,17 @@
     link.setAttribute("aria-label", "Buy THE ARISE ARC ebook");
     link.addEventListener("click", (event) => {
       event.preventDefault();
-      if (!openCheckout()) return;
+      if (!openCheckout()) {
+        setPrice(basePriceLabel, "Checkout setup needed");
+        return;
+      }
       history.replaceState(null, "", "#purchase");
     });
   });
 
   document.querySelectorAll("[data-purchase-button]").forEach((button) => {
     button.addEventListener("click", () => {
-      openCheckout();
+      if (!openCheckout()) setPrice(basePriceLabel, "Checkout setup needed");
     });
   });
 
